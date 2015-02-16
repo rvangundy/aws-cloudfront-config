@@ -6,7 +6,7 @@
 
 var https = require('https');
 var crypto = require('crypto');
-var aws4 = require('aws4');
+var aws4 = require('./node_modules/aws4');
 
 /***************
  *  Variables  *
