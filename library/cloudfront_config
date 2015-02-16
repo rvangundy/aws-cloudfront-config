@@ -1,0 +1,174 @@
+#!/usr/local/bin/node
+
+/******************
+ *  Dependencies  *
+ ******************/
+
+var https = require('https');
+var crypto = require('crypto');
+var aws4 = require('aws4');
+
+/***************
+ *  Variables  *
+ ***************/
+
+var endpoint = 'cloudfront.amazonaws.com';
+var apiVersion = '2014-11-06';
+var originPathRegEx = /<OriginPath>.*<\/OriginPath>/;
+var errMessageCapture = /<Message>([\s\S]*)<\/Message>/;
+
+/****************
+ *  Parameters  *
+ ****************/
+
+/**
+ * aws_access_key
+ * aws_secret_key
+ * origin_path
+ * distribution_id
+ */
+
+var args = process.argv;
+var params = {};
+
+// Collects all parameters for the module
+args.forEach(function(arg) {
+    var arr, key, value;
+
+    if (arg.indexOf('=') > 0) {
+        arr = arg.split('=');
+        key = arr[0];
+        value = arr[1];
+        params[key] = value;
+    }
+});
+
+/*************
+ *  Request  *
+ *************/
+
+// Form the request object
+var requestPath = '/' + apiVersion + '/distribution/' + params.distribution_id + '/config';
+var opts = {
+    service: 'cloudfront',
+    host: endpoint,
+    path: requestPath,
+    method: 'GET'
+};
+
+// Sign the request
+aws4.sign(opts, {
+    accessKeyId: params.aws_access_key,
+    secretAccessKey: params.aws_secret_key
+});
+
+// Get the current configuration
+var req = https.request(opts, function(res) {
+    var data = '';
+    var etag = res.headers.etag;
+
+    res.setEncoding('utf8');
+
+    // Collect all data as it streams in
+    res.on('data', function(chunk) {
+        data += chunk;
+    });
+
+    // When request finished, prepare a response
+    res.on('end', function() {
+        var req;
+        var originPath = '<OriginPath>' + params.origin_path + '</OriginPath>';
+        var originalData = data;
+
+        // Capture error response
+        if (data.indexOf('<ErrorResponse') >= 0) {
+            process.stdout.write(JSON.stringify({
+                failed: true,
+                msg: errMessageCapture.exec(data)[1]
+            }));
+            process.exit(1);
+            return;
+        }
+
+        // Update the origin path
+        data = data.replace(originPathRegEx, originPath);
+
+        // Don't do anything if nothing has changed
+        if (data === originalData) {
+            process.stdout.write(JSON.stringify({
+                changed: false
+            }));
+            process.exit(0);
+            return;
+        }
+
+        // Prepare options
+        var opts = {
+            service: 'cloudfront',
+            host: endpoint,
+            path: requestPath,
+            method: 'PUT',
+            body: data,
+            headers: {
+                etag: etag,
+                'If-Match': etag
+            }
+        };
+
+        // Sign options
+        aws4.sign(opts, {
+            accessKeyId: params.aws_access_key,
+            secretAccessKey: params.aws_secret_key
+        });
+
+        // Prepare the request
+        req = https.request(opts, function(res) {
+            var data = '';
+
+            res.on('error', function(err) {
+                process.stdout.write(JSON.stringify({
+                    failed: true,
+                    msg: err
+                }));
+                process.exit(1);
+            });
+
+            res.on('data', function(chunk) {
+                data += chunk;
+            });
+
+            res.on('end', function() {
+                var changed = data !== originalData;
+
+                // Capture error response
+                if (data.indexOf('<ErrorResponse') >= 0) {
+                    process.stdout.write(JSON.stringify({
+                        failed: true,
+                        msg: errMessageCapture.exec(data)[1]
+                    }));
+                    process.exit(1);
+                    return;
+                }
+
+                // Notify changed
+                process.stdout.write(JSON.stringify({
+                    changed: changed
+                }));
+                process.exit(0);
+            });
+        });
+
+        req.write(data);
+        req.end();
+    });
+
+    res.on('error', function(err) {
+        process.stdout.write(JSON.stringify({
+            failed: true,
+            msg: err
+        }));
+        process.exit(1);
+    });
+});
+
+req.end();
