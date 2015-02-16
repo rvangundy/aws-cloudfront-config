@@ -1,9 +1,9 @@
 ---
 galaxy_info:
-author: Ryan VanGundy
-description: Ansible role to configure AWS CloudFront
-license: MIT
-min_ansible_version: 1.7
-categories:
-- cloud
+  author: Ryan VanGundy
+  description: Ansible role to configure AWS CloudFront
+  license: MIT
+  min_ansible_version: 1.7
+  categories:
+  - cloud
 dependencies: []
