@@ -290,7 +290,13 @@ cloudfront.getDistributionConfig({
     // Update origin path of all items
     if (data.Origins.Items && data.Origins.Items.length) {
         data.Origins.Items.forEach(function(item) {
-            item.OriginPath = params.origin_path || item.OriginPath;
+
+            // Correct for root path designation
+            if (params.origin_path === '/') {
+                item.OriginPath = '';
+            } else {
+                item.OriginPath = params.origin_path || item.OriginPath;
+            }
         });
     }
 

@@ -10,4 +10,4 @@
       cloudfront_config:
         id={{ id }}
         root_object={{ root_object }}
-        origin_path={{ origin_path }}
+        origin_path=/
