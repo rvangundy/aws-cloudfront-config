@@ -1,0 +1,88 @@
+{
+  "ETag": "E2OX2HL9XP7I03",
+  "CallerReference": "1423524333882",
+  "Aliases": {
+    "Quantity": 1,
+    "Items": [
+      "www-staging.bounceexchange.com"
+    ]
+  },
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "S3-www-bounceexchange-staging",
+        "DomainName": "www-bounceexchange-staging.s3.amazonaws.com",
+        "OriginPath": "",
+        "S3OriginConfig": {
+          "OriginAccessIdentity": ""
+        }
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "S3-www-bounceexchange-staging",
+    "ForwardedValues": {
+      "QueryString": false,
+      "Cookies": {
+        "Forward": "none"
+      },
+      "Headers": {
+        "Quantity": 0,
+        "Items": []
+      }
+    },
+    "TrustedSigners": {
+      "Enabled": false,
+      "Quantity": 0,
+      "Items": []
+    },
+    "ViewerProtocolPolicy": "allow-all",
+    "MinTTL": 0,
+    "AllowedMethods": {
+      "Quantity": 2,
+      "Items": [
+        "GET",
+        "HEAD"
+      ],
+      "CachedMethods": {
+        "Quantity": 2,
+        "Items": [
+          "GET",
+          "HEAD"
+        ]
+      }
+    },
+    "SmoothStreaming": false
+  },
+  "CacheBehaviors": {
+    "Quantity": 0,
+    "Items": []
+  },
+  "CustomErrorResponses": {
+    "Quantity": 0,
+    "Items": []
+  },
+  "Comment": "",
+  "Logging": {
+    "Enabled": true,
+    "IncludeCookies": false,
+    "Bucket": "bounceexchange-com-logs.s3.amazonaws.com",
+    "Prefix": "www-staging"
+  },
+  "PriceClass": "PriceClass_All",
+  "Enabled": true,
+  "ViewerCertificate": {
+    "IAMCertificateId": "ASCAIJBGSRCBOOQ6X7D2I",
+    "SSLSupportMethod": "vip",
+    "MinimumProtocolVersion": "TLSv1"
+  },
+  "Restrictions": {
+    "GeoRestriction": {
+      "RestrictionType": "none",
+      "Quantity": 0,
+      "Items": []
+    }
+  }
+}

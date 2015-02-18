@@ -6,7 +6,7 @@
     - role: ../..
   tasks:
 
-    - name: Configure CloudFront root object
+    - name: Configure CloudFront
       cloudfront_config:
         id={{ id }}
         root_object={{ root_object }}
