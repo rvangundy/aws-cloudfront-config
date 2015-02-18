@@ -1,546 +1,201 @@
 #!/usr/bin/env node
 
-(function(run, root) {
-  var ret = run.bind(root)();
-  if ('library') root['library'] = ret;
-  if ("object" == typeof exports && "undefined" != typeof module)
-    module.exports = ret;
-}(function() {
-var __m = {};
-if (typeof require === 'undefined') __m.__sr = function() {};
-else __m.__sr = require;
-__m.__r = function(key) {
-  var m = __m[key];
-  if (m.sts === null) m.load.call();
-  return m.mod.exports;
-};
-__m['https'] = {
-  sts  : 1,
-  mod  : {exports: __m.__sr('https')}
-};
-__m['crypto'] = {
-  sts  : 1,
-  mod  : {exports: __m.__sr('crypto')}
-};
-__m['url'] = {
-  sts  : 1,
-  mod  : {exports: __m.__sr('url')}
-};__m['a'] = {
-  sts: null,
-  mod: { 
-    exports: {} },
-  load: (function() {
-    var module = __m['a'].mod;
-    var exports = module.exports;
-    var require = function(name) {
-      var namemap = {
-
-      }
-      var k = namemap[name];
-      return k ? __m.__r(k) : __m.__sr(name);
-    }
-    require.resolve = __m.__sr.resolve;
-    __m['a'].sts = 0;
-//******** begin file lru-cache@2.3.1(lru-cache.js) ************
-;(function () { // closure for web browsers
-
-if (typeof module === 'object' && module.exports) {
-  module.exports = LRUCache
-} else {
-  // just set the global for non-node platforms.
-  this.LRUCache = LRUCache
-}
-
-function hOP (obj, key) {
-  return Object.prototype.hasOwnProperty.call(obj, key)
-}
-
-function naiveLength () { return 1 }
-
-function LRUCache (options) {
-  if (!(this instanceof LRUCache)) {
-    return new LRUCache(options)
-  }
-
-  var max
-  if (typeof options === 'number') {
-    max = options
-    options = { max: max }
-  }
-
-  if (!options) options = {}
-
-  max = options.max
-
-  var lengthCalculator = options.length || naiveLength
-
-  if (typeof lengthCalculator !== "function") {
-    lengthCalculator = naiveLength
-  }
-
-  if (!max || !(typeof max === "number") || max <= 0 ) {
-    // a little bit silly.  maybe this should throw?
-    max = Infinity
-  }
-
-  var allowStale = options.stale || false
-
-  var maxAge = options.maxAge || null
-
-  var dispose = options.dispose
-
-  var cache = Object.create(null) // hash of items by key
-    , lruList = Object.create(null) // list of items in order of use recency
-    , mru = 0 // most recently used
-    , lru = 0 // least recently used
-    , length = 0 // number of items in the list
-    , itemCount = 0
-
-
-  // resize the cache when the max changes.
-  Object.defineProperty(this, "max",
-    { set : function (mL) {
-        if (!mL || !(typeof mL === "number") || mL <= 0 ) mL = Infinity
-        max = mL
-        // if it gets above double max, trim right away.
-        // otherwise, do it whenever it's convenient.
-        if (length > max) trim()
-      }
-    , get : function () { return max }
-    , enumerable : true
-    })
-
-  // resize the cache when the lengthCalculator changes.
-  Object.defineProperty(this, "lengthCalculator",
-    { set : function (lC) {
-        if (typeof lC !== "function") {
-          lengthCalculator = naiveLength
-          length = itemCount
-          for (var key in cache) {
-            cache[key].length = 1
-          }
-        } else {
-          lengthCalculator = lC
-          length = 0
-          for (var key in cache) {
-            cache[key].length = lengthCalculator(cache[key].value)
-            length += cache[key].length
-          }
-        }
-
-        if (length > max) trim()
-      }
-    , get : function () { return lengthCalculator }
-    , enumerable : true
-    })
-
-  Object.defineProperty(this, "length",
-    { get : function () { return length }
-    , enumerable : true
-    })
-
-
-  Object.defineProperty(this, "itemCount",
-    { get : function () { return itemCount }
-    , enumerable : true
-    })
-
-  this.forEach = function (fn, thisp) {
-    thisp = thisp || this
-    var i = 0;
-    for (var k = mru - 1; k >= 0 && i < itemCount; k--) if (lruList[k]) {
-      i++
-      var hit = lruList[k]
-      if (maxAge && (Date.now() - hit.now > maxAge)) {
-        del(hit)
-        if (!allowStale) hit = undefined
-      }
-      if (hit) {
-        fn.call(thisp, hit.value, hit.key, this)
-      }
-    }
-  }
-
-  this.keys = function () {
-    var keys = new Array(itemCount)
-    var i = 0
-    for (var k = mru - 1; k >= 0 && i < itemCount; k--) if (lruList[k]) {
-      var hit = lruList[k]
-      keys[i++] = hit.key
-    }
-    return keys
-  }
-
-  this.values = function () {
-    var values = new Array(itemCount)
-    var i = 0
-    for (var k = mru - 1; k >= 0 && i < itemCount; k--) if (lruList[k]) {
-      var hit = lruList[k]
-      values[i++] = hit.value
-    }
-    return values
-  }
-
-  this.reset = function () {
-    if (dispose) {
-      for (var k in cache) {
-        dispose(k, cache[k].value)
-      }
-    }
-    cache = {}
-    lruList = {}
-    lru = 0
-    mru = 0
-    length = 0
-    itemCount = 0
-  }
-
-  // Provided for debugging/dev purposes only. No promises whatsoever that
-  // this API stays stable.
-  this.dump = function () {
-    return cache
-  }
-
-  this.dumpLru = function () {
-    return lruList
-  }
-
-  this.set = function (key, value) {
-    if (hOP(cache, key)) {
-      // dispose of the old one before overwriting
-      if (dispose) dispose(key, cache[key].value)
-      if (maxAge) cache[key].now = Date.now()
-      cache[key].value = value
-      this.get(key)
-      return true
-    }
-
-    var len = lengthCalculator(value)
-    var age = maxAge ? Date.now() : 0
-    var hit = new Entry(key, value, mru++, len, age)
-
-    // oversized objects fall out of cache automatically.
-    if (hit.length > max) {
-      if (dispose) dispose(key, value)
-      return false
-    }
-
-    length += hit.length
-    lruList[hit.lu] = cache[key] = hit
-    itemCount ++
-
-    if (length > max) trim()
-    return true
-  }
-
-  this.has = function (key) {
-    if (!hOP(cache, key)) return false
-    var hit = cache[key]
-    if (maxAge && (Date.now() - hit.now > maxAge)) {
-      return false
-    }
-    return true
-  }
-
-  this.get = function (key) {
-    return get(key, true)
-  }
-
-  this.peek = function (key) {
-    return get(key, false)
-  }
-
-  function get (key, doUse) {
-    var hit = cache[key]
-    if (hit) {
-      if (maxAge && (Date.now() - hit.now > maxAge)) {
-        del(hit)
-        if (!allowStale) hit = undefined
-      } else {
-        if (doUse) use(hit)
-      }
-      if (hit) hit = hit.value
-    }
-    return hit
-  }
-
-  function use (hit) {
-    shiftLU(hit)
-    hit.lu = mru ++
-    lruList[hit.lu] = hit
-  }
-
-  this.del = function (key) {
-    del(cache[key])
-  }
-
-  function trim () {
-    while (lru < mru && length > max)
-      del(lruList[lru])
-  }
-
-  function shiftLU(hit) {
-    delete lruList[ hit.lu ]
-    while (lru < mru && !lruList[lru]) lru ++
-  }
-
-  function del(hit) {
-    if (hit) {
-      if (dispose) dispose(hit.key, hit.value)
-      length -= hit.length
-      itemCount --
-      delete cache[ hit.key ]
-      shiftLU(hit)
-    }
-  }
-}
-
-// classy, since V8 prefers predictable objects.
-function Entry (key, value, mru, len, age) {
-  this.key = key
-  this.value = value
-  this.lu = mru
-  this.length = len
-  this.now = age
-}
-
-})()
-//******** end file lru-cache@2.3.1(lru-cache.js)************
-    __m['a'].sts = 1;
-  }).bind(this)
-};
-__m['b'] = {
-  sts: null,
-  mod: { 
-    exports: {} },
-  load: (function() {
-    var module = __m['b'].mod;
-    var exports = module.exports;
-    var require = function(name) {
-      var namemap = {
-        'url': 'url',
-        'crypto': 'crypto',
-        'lru-cache': 'a'
-      }
-      var k = namemap[name];
-      return k ? __m.__r(k) : __m.__sr(name);
-    }
-    require.resolve = __m.__sr.resolve;
-    __m['b'].sts = 0;
-//******** begin file aws4@0.4.2(aws4.js) ************
-var aws4 = exports,
-    url = require('url'),
-    crypto = require('crypto'),
-    lru = require('lru-cache'),
-    credentialsCache = lru(1000)
-
-// http://docs.amazonwebservices.com/general/latest/gr/signature-version-4.html
-
-function hmac(key, string, encoding) {
-  return crypto.createHmac('sha256', key).update(string, 'utf8').digest(encoding)
-}
-
-function hash(string, encoding) {
-  return crypto.createHash('sha256').update(string, 'utf8').digest(encoding)
-}
-
-// request: { path | body, [host], [method], [headers], [service], [region] }
-// credentials: { accessKeyId, secretAccessKey, [sessionToken] }
-function RequestSigner(request, credentials) {
-
-  if (typeof request === 'string') request = url.parse(request)
-
-  var headers = request.headers || {},
-      hostParts = this.matchHost(request.hostname || request.host || headers.Host)
-
-  this.request = request
-  this.credentials = credentials || this.defaultCredentials()
-
-  this.service = request.service || hostParts[0] || ''
-  this.region = request.region || hostParts[1] || 'us-east-1'
-
-  // SES uses a different domain from the service name
-  if (this.service === 'email') this.service = 'ses'
-}
-
-RequestSigner.prototype.matchHost = function(host) {
-  var match = (host || '').match(/^([^\.]+)\.?([^\.]*)\.amazonaws\.com$/)
-  return (match || []).slice(1, 3)
-}
-
-// http://docs.aws.amazon.com/general/latest/gr/rande.html
-RequestSigner.prototype.isSingleRegion = function() {
-  // Special case for S3 and SimpleDB in us-east-1
-  if (['s3', 'sdb'].indexOf(this.service) >= 0 && this.region === 'us-east-1') return true
-
-  return ['cloudfront', 'ls', 'route53', 'iam', 'importexport', 'sts']
-    .indexOf(this.service) >= 0
-}
-
-RequestSigner.prototype.createHost = function() {
-  var region = this.isSingleRegion() ? '' : '.' + this.region,
-      service = this.service === 'ses' ? 'email' : this.service
-  return service + region + '.amazonaws.com'
-}
-
-RequestSigner.prototype.sign = function() {
-  var request = this.request,
-      headers = request.headers = (request.headers || {}),
-      date = new Date(headers.Date || new Date)
-
-  this.datetime = date.toISOString().replace(/[:\-]|\.\d{3}/g, '')
-  this.date = this.datetime.substr(0, 8)
-
-  if (!request.method && request.body)
-    request.method = 'POST'
-
-  if (!headers.Host && !headers.host)
-    headers.Host = request.hostname || request.host || this.createHost()
-  if (!request.hostname && !request.host)
-    request.hostname = headers.Host || headers.host
-
-  if (request.body && !headers['Content-Type'] && !headers['content-type'])
-    headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8'
-
-  if (request.body && !headers['Content-Length'] && !headers['content-length'])
-    headers['Content-Length'] = Buffer.byteLength(request.body)
-
-  headers['X-Amz-Date'] = this.datetime
-
-  if (this.credentials.sessionToken)
-    headers['X-Amz-Security-Token'] = this.credentials.sessionToken
-
-  if (this.service === 's3')
-    headers['X-Amz-Content-Sha256'] = hash(this.request.body || '', 'hex')
-
-  if (headers.Authorization) delete headers.Authorization
-  headers.Authorization = this.authHeader()
-
-  return request
-}
-
-RequestSigner.prototype.authHeader = function() {
-  return [
-    'AWS4-HMAC-SHA256 Credential=' + this.credentials.accessKeyId + '/' + this.credentialString(),
-    'SignedHeaders=' + this.signedHeaders(),
-    'Signature=' + this.signature()
-  ].join(', ')
-}
-
-RequestSigner.prototype.signature = function() {
-  var cacheKey = [this.credentials.secretAccessKey, this.date, this.region, this.service].join(),
-      kDate, kRegion, kService, kCredentials = credentialsCache.get(cacheKey)
-  if (!kCredentials) {
-    kDate = hmac('AWS4' + this.credentials.secretAccessKey, this.date)
-    kRegion = hmac(kDate, this.region)
-    kService = hmac(kRegion, this.service)
-    kCredentials = hmac(kService, 'aws4_request')
-    credentialsCache.set(cacheKey, kCredentials)
-  }
-  return hmac(kCredentials, this.stringToSign(), 'hex')
-}
-
-RequestSigner.prototype.stringToSign = function() {
-  return [
-    'AWS4-HMAC-SHA256',
-    this.datetime,
-    this.credentialString(),
-    hash(this.canonicalString(), 'hex')
-  ].join('\n')
-}
-
-RequestSigner.prototype.canonicalString = function() {
-  var pathParts = (this.request.path || '/').split('?', 2)
-  return [
-    this.request.method || 'GET',
-    pathParts[0] || '/',
-    pathParts[1] || '',
-    this.canonicalHeaders() + '\n',
-    this.signedHeaders(),
-    hash(this.request.body || '', 'hex')
-  ].join('\n')
-}
-
-RequestSigner.prototype.canonicalHeaders = function() {
-  var headers = this.request.headers
-  function trimAll(header) {
-    return header.toString().trim().replace(/\s+/g, ' ')
-  }
-  return Object.keys(headers)
-    .sort(function(a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1 })
-    .map(function(key) { return key.toLowerCase() + ':' + trimAll(headers[key]) })
-    .join('\n')
-}
-
-RequestSigner.prototype.signedHeaders = function() {
-  return Object.keys(this.request.headers)
-    .map(function(key) { return key.toLowerCase() })
-    .sort()
-    .join(';')
-}
-
-RequestSigner.prototype.credentialString = function() {
-  return [
-    this.date,
-    this.region,
-    this.service,
-    'aws4_request'
-  ].join('/')
-}
-
-RequestSigner.prototype.defaultCredentials = function() {
-  var env = process.env
-  return {
-    accessKeyId:     env.AWS_ACCESS_KEY_ID     || env.AWS_ACCESS_KEY,
-    secretAccessKey: env.AWS_SECRET_ACCESS_KEY || env.AWS_SECRET_KEY,
-    sessionToken:    env.AWS_SESSION_TOKEN
-  }
-}
-
-aws4.RequestSigner = RequestSigner
-
-aws4.sign = function(request, credentials) {
-  return new RequestSigner(request, credentials).sign()
-}
-//******** end file aws4@0.4.2(aws4.js)************
-    __m['b'].sts = 1;
-  }).bind(this)
-};
-__m['c'] = {
-  sts: null,
-  mod: { 
-    exports: {} },
-  load: (function() {
-    var module = __m['c'].mod;
-    var exports = module.exports;
-    var require = function(name) {
-      var namemap = {
-        'https': 'https',
-        'crypto': 'crypto',
-        'aws4': 'b'
-      }
-      var k = namemap[name];
-      return k ? __m.__r(k) : __m.__sr(name);
-    }
-    require.resolve = __m.__sr.resolve;
-    __m['c'].sts = 0;
-//******** begin file aws-cloudfront-config@1.0.0(index.js) ************
 /******************
  *  Dependencies  *
  ******************/
 
-var https = require('https');
-var crypto = require('crypto');
-var aws4 = require('aws4');
+var AWS = require('aws-sdk');
+var fs = require('fs');
 
 /***************
- *  Variables  *
+ *  deepEqual  *
  ***************/
 
-var endpoint = 'cloudfront.amazonaws.com';
-var apiVersion = '2014-11-06';
-var originPathRegEx = /<OriginPath>.*<\/OriginPath>/;
-var errMessageCapture = /<Message>([\s\S]*)<\/Message>/;
+// From https://github.com/substack/node-deep-equal
+
+var pSlice = Array.prototype.slice;
+var objectKeys = Object.keys;
+function isArguments(object) {
+    return Object.prototype.toString.call(object) == '[object Arguments]';
+};
+
+var deepEqual = function (actual, expected, opts) {
+    if (!opts) opts = {};
+    // 7.1. All identical values are equivalent, as determined by ===.
+    if (actual === expected) {
+        return true;
+
+    } else if (actual instanceof Date && expected instanceof Date) {
+        return actual.getTime() === expected.getTime();
+
+    // 7.3. Other pairs that do not both pass typeof value == 'object',
+    // equivalence is determined by ==.
+    } else if (typeof actual != 'object' && typeof expected != 'object') {
+        return opts.strict ? actual === expected : actual == expected;
+
+    // 7.4. For all other Object pairs, including Array objects, equivalence is
+    // determined by having the same number of owned properties (as verified
+    // with Object.prototype.hasOwnProperty.call), the same set of keys
+    // (although not necessarily the same order), equivalent values for every
+    // corresponding key, and an identical 'prototype' property. Note: this
+    // accounts for both named and indexed properties on Arrays.
+    } else {
+        return objEquiv(actual, expected, opts);
+    }
+}
+
+function isUndefinedOrNull(value) {
+    return value === null || value === undefined;
+}
+
+function isBuffer (x) {
+    if (!x || typeof x !== 'object' || typeof x.length !== 'number') return false;
+    if (typeof x.copy !== 'function' || typeof x.slice !== 'function') {
+        return false;
+    }
+    if (x.length > 0 && typeof x[0] !== 'number') return false;
+    return true;
+}
+
+function objEquiv(a, b, opts) {
+    var i, key;
+    if (isUndefinedOrNull(a) || isUndefinedOrNull(b))
+        return false;
+    // an identical 'prototype' property.
+    if (a.prototype !== b.prototype) return false;
+    //~~~I've managed to break Object.keys through screwy arguments passing.
+    //   Converting to array solves the problem.
+    if (isArguments(a)) {
+        if (!isArguments(b)) {
+            return false;
+        }
+        a = pSlice.call(a);
+        b = pSlice.call(b);
+        return deepEqual(a, b, opts);
+    }
+    if (isBuffer(a)) {
+        if (!isBuffer(b)) {
+            return false;
+        }
+        if (a.length !== b.length) return false;
+        for (i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+    try {
+        var ka = objectKeys(a),
+                kb = objectKeys(b);
+    } catch (e) {//happens when one is a string literal and the other isn't
+        return false;
+    }
+    // having the same number of owned properties (keys incorporates
+    // hasOwnProperty)
+    if (ka.length != kb.length)
+        return false;
+    //the same set of keys (although not necessarily the same order),
+    ka.sort();
+    kb.sort();
+    //~~~cheap key test
+    for (i = ka.length - 1; i >= 0; i--) {
+        if (ka[i] != kb[i])
+            return false;
+    }
+    //equivalent values for every corresponding key, and
+    //~~~possibly expensive deep test
+    for (i = ka.length - 1; i >= 0; i--) {
+        key = ka[i];
+        if (!deepEqual(a[key], b[key], opts)) return false;
+    }
+    return typeof a === typeof b;
+}
+
+/************
+ *  Extend  *
+ ************/
+
+// From https://github.com/justmoon/node-extend
+
+var hasOwn = Object.prototype.hasOwnProperty;
+var toString = Object.prototype.toString;
+var undefined;
+
+var isPlainObject = function isPlainObject(obj) {
+    'use strict';
+    if (!obj || toString.call(obj) !== '[object Object]') {
+        return false;
+    }
+
+    var has_own_constructor = hasOwn.call(obj, 'constructor');
+    var has_is_property_of_method = obj.constructor && obj.constructor.prototype && hasOwn.call(obj.constructor.prototype, 'isPrototypeOf');
+    // Not own constructor property must be Object
+    if (obj.constructor && !has_own_constructor && !has_is_property_of_method) {
+        return false;
+    }
+
+    // Own properties are enumerated firstly, so to speed up,
+    // if last one is own, then all properties are own.
+    var key;
+    for (key in obj) {}
+
+    return key === undefined || hasOwn.call(obj, key);
+};
+
+function extend() {
+    'use strict';
+    var options, name, src, copy, copyIsArray, clone,
+        target = arguments[0],
+        i = 1,
+        length = arguments.length,
+        deep = false;
+
+    // Handle a deep copy situation
+    if (typeof target === 'boolean') {
+        deep = target;
+        target = arguments[1] || {};
+        // skip the boolean and the target
+        i = 2;
+    } else if ((typeof target !== 'object' && typeof target !== 'function') || target == null) {
+        target = {};
+    }
+
+    for (; i < length; ++i) {
+        options = arguments[i];
+        // Only deal with non-null/undefined values
+        if (options != null) {
+            // Extend the base object
+            for (name in options) {
+                src = target[name];
+                copy = options[name];
+
+                // Prevent never-ending loop
+                if (target === copy) {
+                    continue;
+                }
+
+                // Recurse if we're merging plain objects or arrays
+                if (deep && copy && (isPlainObject(copy) || (copyIsArray = Array.isArray(copy)))) {
+                    if (copyIsArray) {
+                        copyIsArray = false;
+                        clone = src && Array.isArray(src) ? src : [];
+                    } else {
+                        clone = src && isPlainObject(src) ? src : {};
+                    }
+
+                    // Never move original objects, clone them
+                    target[name] = extend(deep, clone, copy);
+
+                // Don't bring in undefined values
+                } else if (copy !== undefined) {
+                    target[name] = copy;
+                }
+            }
+        }
+    }
+
+    // Return the modified object
+    return target;
+};
 
 /****************
  *  Parameters  *
@@ -549,158 +204,122 @@ var errMessageCapture = /<Message>([\s\S]*)<\/Message>/;
 /**
  * aws_access_key
  * aws_secret_key
+ * root_object
  * origin_path
- * distribution_id
+ * id
  */
 
 var args = process.argv;
 var params = {};
+var argsFile = fs.readFileSync(args[2]).toString();
+
+args = argsFile.split(' ');
 
 // Collects all parameters for the module
 args.forEach(function(arg) {
     var arr, key, value;
 
     if (arg.indexOf('=') > 0) {
-        arr = arg.split('=');
-        key = arr[0];
-        value = arr[1];
-        params[key] = value;
+            arr = arg.split('=');
+            key = arr[0];
+            value = arr[1];
+            params[key] = value;
     }
 });
 
-/*************
- *  Request  *
- *************/
+/***************
+ *  Messaging  *
+ ***************/
 
-// Form the request object
-var requestPath = '/' + apiVersion + '/distribution/' + params.distribution_id + '/config';
-var opts = {
-    service: 'cloudfront',
-    host: endpoint,
-    path: requestPath,
-    method: 'GET'
-};
-
-// Sign the request
-aws4.sign(opts, {
-    accessKeyId: params.aws_access_key,
-    secretAccessKey: params.aws_secret_key
-});
-
-// Get the current configuration
-var req = https.request(opts, function(res) {
-    var data = '';
-    var etag = res.headers.etag;
-
-    res.setEncoding('utf8');
-
-    // Collect all data as it streams in
-    res.on('data', function(chunk) {
-        data += chunk;
-    });
-
-    // When request finished, prepare a response
-    res.on('end', function() {
-        var req;
-        var originPath = '<OriginPath>' + params.origin_path + '</OriginPath>';
-        var originalData = data;
-
-        // Capture error response
-        if (data.indexOf('<ErrorResponse') >= 0) {
-            process.stdout.write(JSON.stringify({
-                failed: true,
-                msg: errMessageCapture.exec(data)[1]
-            }));
-            process.exit(1);
-            return;
-        }
-
-        // Update the origin path
-        data = data.replace(originPathRegEx, originPath);
-
-        // Don't do anything if nothing has changed
-        if (data === originalData) {
-            process.stdout.write(JSON.stringify({
-                changed: false
-            }));
-            process.exit(0);
-            return;
-        }
-
-        // Prepare options
-        var opts = {
-            service: 'cloudfront',
-            host: endpoint,
-            path: requestPath,
-            method: 'PUT',
-            body: data,
-            headers: {
-                etag: etag,
-                'If-Match': etag
-            }
-        };
-
-        // Sign options
-        aws4.sign(opts, {
-            accessKeyId: params.aws_access_key,
-            secretAccessKey: params.aws_secret_key
-        });
-
-        // Prepare the request
-        req = https.request(opts, function(res) {
-            var data = '';
-
-            res.on('error', function(err) {
-                process.stdout.write(JSON.stringify({
-                    failed: true,
-                    msg: err
-                }));
-                process.exit(1);
-            });
-
-            res.on('data', function(chunk) {
-                data += chunk;
-            });
-
-            res.on('end', function() {
-                var changed = data !== originalData;
-
-                // Capture error response
-                if (data.indexOf('<ErrorResponse') >= 0) {
-                    process.stdout.write(JSON.stringify({
-                        failed: true,
-                        msg: errMessageCapture.exec(data)[1]
-                    }));
-                    process.exit(1);
-                    return;
-                }
-
-                // Notify changed
-                process.stdout.write(JSON.stringify({
-                    changed: changed
-                }));
-                process.exit(0);
-            });
-        });
-
-        req.write(data);
-        req.end();
-    });
-
-    res.on('error', function(err) {
-        process.stdout.write(JSON.stringify({
+/**
+ * Generates an Ansible error output and sends it to stdout
+ * @param {String} msg The error message
+ */
+function error(msg) {
+    process.stdout.write(JSON.stringify({
             failed: true,
-            msg: err
-        }));
-        process.exit(1);
-    });
+            msg: msg
+    }));
+    process.exit(1);
+}
+
+/**
+ * Generates an Ansible success output and sends to stdout
+ * @param {Boolean} changed Whether a change was made
+ */
+function success(changed, data) {
+    var msgObject = {
+            changed: changed
+    };
+
+    // Extend with additional info
+    if (data) { extend(msgObject, data); }
+
+    process.stdout.write(JSON.stringify(msgObject));
+    process.exit(0);
+}
+
+/***************
+ *  Configure  *
+ ***************/
+
+AWS.config.accessKeyId = params.aws_access_key || process.env.AWS_ACCESS_KEY_ID;
+AWS.config.secretAccessKey = params.aws_secret_key || process.env.AWS_SECRET_ACCESS_KEY;
+
+/****************
+ *  Cloudfront  *
+ ****************/
+
+var cloudfront = new AWS.CloudFront();
+
+cloudfront.getDistributionConfig({
+        Id: params.id
+}, function(err, data) {
+    var etag;
+    var copy = extend(true, {}, data);
+
+    // Throw errors
+    if (err) {
+        error(err);
+        return;
+    }
+
+    // Update root object
+    data.DefaultRootObject = params.root_object || data.DefaultRootObject;
+
+    // Update origin path of all items
+    if (data.Origins.Items && data.Origins.Items.length) {
+        data.Origins.Items.forEach(function(item) {
+            item.OriginPath = params.origin_path || item.OriginPath;
+        });
+    }
+
+    // Do nothing if no changes
+    if (deepEqual(data, copy)) {
+        success(false);
+    }
+
+    // Update configuration
+    else {
+
+        // AWS doesn't want ETag in config object
+        etag = data.ETag;
+        delete data.ETag;
+
+        // Reconfigure distribution
+        cloudfront.updateDistribution({
+            IfMatch: etag,
+            Id: params.id,
+            DistributionConfig: data
+        }, function(err, data) {
+
+            // Throw errors
+            if (err) {
+                error(err);
+                return;
+            }
+
+            success(true);
+        });
+    }
 });
-
-req.end();//******** end file aws-cloudfront-config@1.0.0(index.js)************
-    __m['c'].sts = 1;
-  }).bind(this)
-};
-
-return __m.__r('c');
-
-},this));
